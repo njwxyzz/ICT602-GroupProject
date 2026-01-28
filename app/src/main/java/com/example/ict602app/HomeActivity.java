@@ -200,12 +200,14 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
                                 try {
                                     double lat = Double.parseDouble(log.getLatitude());
                                     double lng = Double.parseDouble(log.getLongitude());
-                                    // Plot Marker Kawan-kawan
+                                    // Show friends as default markers
                                     mMap.addMarker(new MarkerOptions()
                                             .position(new LatLng(lat, lng))
                                             .title(log.getUsername())
                                             .snippet("Last Seen: " + log.getCreatedAt()));
-                                } catch (Exception e) {}
+                                } catch (Exception e) {
+                                    Log.e("MAP_ERROR", "Error parsing location: " + e.getMessage());
+                                }
                             }
                         }
                     });
@@ -230,39 +232,67 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void fetchHazardsFromServer() {
         OkHttpClient client = new OkHttpClient();
-        // Using the new PHP file we created
+
+        // 10.0.2.2 points to your computer's localhost from the Android emulator
         Request request = new Request.Builder()
-                .url("http://10.0.2.2/crowdtrack_api/get_hazards.php") // Ensure path is correct
+                .url("http://10.0.2.2/crowdtrack_api/get_hazards.php")
                 .build();
 
+        // Logic: 'enqueue' makes the network call in the background so the app doesn't freeze
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                Log.e("HAZARD_FETCH", "Failed to get hazards: " + e.getMessage());
+                Log.e("HAZARD_FETCH", "Network Error: " + e.getMessage());
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 if (response.isSuccessful()) {
                     String json = response.body().string();
-                    // We use a simple list of a custom class or Map
                     Gson gson = new Gson();
-                    List<HazardModel> hazardList = gson.fromJson(json, new TypeToken<List<HazardModel>>(){}.getType());
 
+                    // Logic: Convert the JSON text into a List using your HazardModel class
+                    final List<HazardModel> hazardList = gson.fromJson(json,
+                            new TypeToken<List<HazardModel>>(){}.getType());
+
+                    // Logic: UI changes (like adding markers) MUST happen on the UI Thread
                     runOnUiThread(() -> {
-                        if (mMap != null) {
-                            for (HazardModel hazard : hazardList) {
-                                LatLng pos = new LatLng(hazard.lat, hazard.lng);
-                                mMap.addMarker(new MarkerOptions()
-                                        .position(pos)
-                                        .title("⚠️ HAZARD: " + hazard.description)
-                                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))); // Red color for danger
-                            }
-                        }
+                        addHazardsToMap(hazardList);
                     });
                 }
             }
         });
+    }
+
+    private void addHazardsToMap(List<HazardModel> list) {
+        if (mMap == null || list == null) return;
+
+        for (HazardModel hazard : list) {
+            LatLng pos = new LatLng(hazard.lat, hazard.lng);
+            float markerColor = BitmapDescriptorFactory.HUE_RED; // Default Red
+
+            // Convert description to lowercase so it's not case-sensitive
+            String desc = hazard.description.toLowerCase();
+
+            // Check for keywords
+            if (desc.contains("flood") || desc.contains("banjir") || desc.contains("air")) {
+                markerColor = BitmapDescriptorFactory.HUE_BLUE;
+            }
+            else if (desc.contains("fire") || desc.contains("api") || desc.contains("kebakaran")) {
+                markerColor = BitmapDescriptorFactory.HUE_ORANGE;
+            }
+            else if (desc.contains("accident") || desc.contains("eksiden") || desc.contains("kemalangan")) {
+                markerColor = BitmapDescriptorFactory.HUE_YELLOW;
+            }
+            else if (desc.contains("construction") || desc.contains("kerja")) {
+                markerColor = BitmapDescriptorFactory.HUE_VIOLET; // Violet for construction
+            }
+
+            mMap.addMarker(new MarkerOptions()
+                    .position(pos)
+                    .title("⚠️ " + hazard.description)
+                    .icon(BitmapDescriptorFactory.defaultMarker(markerColor)));
+        }
     }
 
     // Simple Helper Class (Place this at the bottom of HomeActivity.java or in a new file)
