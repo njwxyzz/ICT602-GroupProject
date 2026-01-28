@@ -22,6 +22,7 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 
 // GPS COMPONENTS
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -100,6 +101,7 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         // Tarik data marker lama dari database (untuk tunjuk kawan lain)
         fetchLocationsFromServer();
+        fetchHazardsFromServer();
     }
 
     // --- BAHAGIAN 2: GPS TRACKING ---
@@ -133,7 +135,7 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
                     if (mMap != null) {
                         if (myMarker == null) {
                             // Kalau marker belum ada, buat baru
-                            myMarker = mMap.addMarker(new MarkerOptions().position(newPos).title("SAYA (" + username + ")"));
+                            myMarker = mMap.addMarker(new MarkerOptions().position(newPos).title("ME (" + username + ")"));
                             mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(newPos, 15f)); // Zoom ke lokasi
                         } else {
                             // Kalau dah ada, gerakkan je
@@ -224,5 +226,49 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (requestCode == 100 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             startLocationUpdates();
         }
+    }
+
+    private void fetchHazardsFromServer() {
+        OkHttpClient client = new OkHttpClient();
+        // Using the new PHP file we created
+        Request request = new Request.Builder()
+                .url("http://10.0.2.2/crowdtrack_api/get_hazards.php") // Ensure path is correct
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                Log.e("HAZARD_FETCH", "Failed to get hazards: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                if (response.isSuccessful()) {
+                    String json = response.body().string();
+                    // We use a simple list of a custom class or Map
+                    Gson gson = new Gson();
+                    List<HazardModel> hazardList = gson.fromJson(json, new TypeToken<List<HazardModel>>(){}.getType());
+
+                    runOnUiThread(() -> {
+                        if (mMap != null) {
+                            for (HazardModel hazard : hazardList) {
+                                LatLng pos = new LatLng(hazard.lat, hazard.lng);
+                                mMap.addMarker(new MarkerOptions()
+                                        .position(pos)
+                                        .title("⚠️ HAZARD: " + hazard.description)
+                                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))); // Red color for danger
+                            }
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    // Simple Helper Class (Place this at the bottom of HomeActivity.java or in a new file)
+    class HazardModel {
+        String description;
+        double lat;
+        double lng;
     }
 }
