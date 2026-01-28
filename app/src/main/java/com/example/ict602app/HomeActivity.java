@@ -3,8 +3,11 @@ package com.example.ict602app;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.location.Location;
 import android.os.Bundle;
+import android.os.Looper;
 import android.util.Log;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -14,16 +17,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-// GOOGLE MAPS COMPONENTS
-import com.google.android.gms.maps.CameraUpdateFactory;
-import com.google.android.gms.maps.GoogleMap;
-import com.google.android.gms.maps.OnMapReadyCallback;
-import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.Marker;
-import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.maps.model.BitmapDescriptorFactory;
-
 // GPS COMPONENTS
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
@@ -32,7 +25,7 @@ import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.Priority;
 
-// SERVER COMPONENTS (JSON & OKHTTP)
+// SERVER COMPONENTS
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
@@ -45,66 +38,68 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class HomeActivity extends AppCompatActivity implements OnMapReadyCallback {
+public class HomeActivity extends AppCompatActivity {
 
-    private GoogleMap mMap;
     private FusedLocationProviderClient fusedLocationClient;
     private LocationCallback locationCallback;
     private String username;
-    private Marker myMarker; // Marker untuk diri sendiri
+
+    // UI Components
+    private TextView tvUsername, tvCoordinates, tvGpsStatus;
+    private TextView tvNewsTitle;
+    private LinearLayout navMap;
+    private ImageView iconLogout;
+
+    private static final String SERVER_URL = "http://10.0.2.2/crowdtrack_api/";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
 
-        // 1. SETUP NAVIGATION & USERNAME
-        // (Kita tak ada TextView Welcome dalam XML baru, jadi tak payah set text)
-        LinearLayout btnNavLogout = findViewById(R.id.btnNavLogout);
-        LinearLayout navAbout = findViewById(R.id.navAbout);
+        // 1. SETUP UI COMPONENTS
+        tvUsername = findViewById(R.id.tvUsername);
+        tvCoordinates = findViewById(R.id.tvCoordinates);
+        tvGpsStatus = findViewById(R.id.tvGpsLabel);
+        tvNewsTitle = findViewById(R.id.tvNewsTitle);
+        navMap = findViewById(R.id.navMap);
+        iconLogout = findViewById(R.id.iconLogout);
 
+        // 2. LOGIC USERNAME
         username = getIntent().getStringExtra("USER_NAME");
-        if (username == null) username = "Anonymous";
 
-        // 2. SETUP GOOGLE MAPS
-        // Kita cari fragment peta yang kita baru letak dalam XML tadi
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
-        if (mapFragment != null) {
-            mapFragment.getMapAsync(this); // Arahkan dia load peta
+        if (username == null) {
+            username = "Guest";
+        }
+        tvUsername.setText("Hello, " + username + "!");
+
+        // 3. LOGIC BUTTON MAP
+        if (navMap != null) {
+            navMap.setOnClickListener(v -> {
+                Intent intent = new Intent(HomeActivity.this, MapActivity.class);
+                startActivity(intent);
+            });
         }
 
-        // 3. SETUP BUTANG NAVIGASI
-        if (btnNavLogout != null) {
-            btnNavLogout.setOnClickListener(v -> {
-                stopTracking(); // Stop GPS bila logout
+        if (iconLogout != null) {
+            iconLogout.setOnClickListener(v -> {
+                stopTracking();
                 Intent intent = new Intent(HomeActivity.this, MainActivity.class);
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                 startActivity(intent);
                 finish();
             });
         }
-        if (navAbout != null) {
-            navAbout.setOnClickListener(v -> startActivity(new Intent(HomeActivity.this, AboutActivity.class)));
-        }
 
-        // 4. MULA GPS (Cari lokasi semasa)
+        // 4. MULA GPS TRACKING
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         checkPermissionAndStartGPS();
+
+        // 5. TARIK INFO HAZARD
+        fetchLatestHazard(); // Kita cuma PANGGIL function ni kat sini, bukan define dia.
     }
 
-    // --- BAHAGIAN 1: BILA PETA DAH SIAP LOAD ---
-    @Override
-    public void onMapReady(@NonNull GoogleMap googleMap) {
-        mMap = googleMap;
-        mMap.getUiSettings().setZoomControlsEnabled(true); // Ada butang +/-
-
-        // Tarik data marker lama dari database (untuk tunjuk kawan lain)
-        fetchLocationsFromServer();
-        fetchHazardsFromServer();
-    }
-
-    // --- BAHAGIAN 2: GPS TRACKING ---
+    // --- FUNCTION GPS ---
     private void checkPermissionAndStartGPS() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -116,9 +111,8 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void startLocationUpdates() {
-        // Update lokasi setiap 10 saat
-        LocationRequest locationRequest = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 10000)
-                .setMinUpdateIntervalMillis(5000)
+        LocationRequest locationRequest = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000)
+                .setMinUpdateIntervalMillis(3000)
                 .build();
 
         locationCallback = new LocationCallback() {
@@ -126,35 +120,34 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
             public void onLocationResult(@NonNull LocationResult locationResult) {
                 if (locationResult == null) return;
 
-                for (android.location.Location location : locationResult.getLocations()) {
+                for (Location location : locationResult.getLocations()) {
                     double lat = location.getLatitude();
                     double lng = location.getLongitude();
-                    LatLng newPos = new LatLng(lat, lng);
 
-                    // A) Update Marker Kita
-                    if (mMap != null) {
-                        if (myMarker == null) {
-                            // Kalau marker belum ada, buat baru
-                            myMarker = mMap.addMarker(new MarkerOptions().position(newPos).title("ME (" + username + ")"));
-                            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(newPos, 15f)); // Zoom ke lokasi
-                        } else {
-                            // Kalau dah ada, gerakkan je
-                            myMarker.setPosition(newPos);
-                        }
-                    }
+                    // Update UI Dashboard
+                    String latDir = (lat >= 0) ? "N" : "S";
+                    String lngDir = (lng >= 0) ? "E" : "W";
+                    String coordText = String.format("%.4f°%s, %.4f°%s", Math.abs(lat), latDir, Math.abs(lng), lngDir);
+                    tvCoordinates.setText(coordText);
 
-                    // B) Hantar data ke Server
+                    // Hantar ke Server
                     sendLocationToServer(lat, lng);
                 }
             }
         };
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, getMainLooper());
+            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper());
         }
     }
 
-    // --- BAHAGIAN 3: SERVER SEND (WRITE) ---
+    private void stopTracking() {
+        if (fusedLocationClient != null && locationCallback != null) {
+            fusedLocationClient.removeLocationUpdates(locationCallback);
+        }
+    }
+
+    // --- FUNCTION SERVER (SEND LOCATION) ---
     private void sendLocationToServer(double lat, double lng) {
         OkHttpClient client = new OkHttpClient();
         RequestBody formBody = new FormBody.Builder()
@@ -164,23 +157,24 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .build();
 
         Request request = new Request.Builder()
-                .url("http://10.0.2.2/crowdtrack_api/update_location.php")
+                .url(SERVER_URL + "update_location.php")
                 .post(formBody)
                 .build();
 
         client.newCall(request).enqueue(new Callback() {
             @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) { Log.e("MAP_UPLOAD", "Gagal hantar: " + e.getMessage()); }
+            public void onFailure(@NonNull Call call, @NonNull IOException e) { Log.e("GPS", "Fail send: " + e.getMessage()); }
             @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException { /* Success senyap je */ }
+            public void onResponse(@NonNull Call call, @NonNull Response response) { response.close(); }
         });
     }
 
-    // --- BAHAGIAN 4: SERVER FETCH (READ) ---
-    private void fetchLocationsFromServer() {
+    // --- FUNCTION SERVER (GET HAZARD) ---
+    // (Function ni mesti duduk LUAR onCreate)
+    private void fetchLatestHazard() {
         OkHttpClient client = new OkHttpClient();
         Request request = new Request.Builder()
-                .url("http://10.0.2.2/crowdtrack_api/get_locations.php")
+                .url(SERVER_URL + "get_hazards.php")
                 .build();
 
         client.newCall(request).enqueue(new Callback() {
@@ -192,110 +186,30 @@ public class HomeActivity extends AppCompatActivity implements OnMapReadyCallbac
                 if (response.isSuccessful()) {
                     String json = response.body().string();
                     Gson gson = new Gson();
-                    List<LocationLog> list = gson.fromJson(json, new TypeToken<List<LocationLog>>(){}.getType());
 
-                    runOnUiThread(() -> {
-                        if (mMap != null) {
-                            for (LocationLog log : list) {
-                                try {
-                                    double lat = Double.parseDouble(log.getLatitude());
-                                    double lng = Double.parseDouble(log.getLongitude());
-                                    // Show friends as default markers
-                                    mMap.addMarker(new MarkerOptions()
-                                            .position(new LatLng(lat, lng))
-                                            .title(log.getUsername())
-                                            .snippet("Last Seen: " + log.getCreatedAt()));
-                                } catch (Exception e) {
-                                    Log.e("MAP_ERROR", "Error parsing location: " + e.getMessage());
+                    try {
+                        List<HazardModel> hazards = gson.fromJson(json, new TypeToken<List<HazardModel>>(){}.getType());
+
+                        if (hazards != null && !hazards.isEmpty()) {
+                            // Ambil hazard paling latest
+                            HazardModel latest = hazards.get(hazards.size() - 1);
+
+                            runOnUiThread(() -> {
+                                // Update text
+                                if (tvNewsTitle != null) {
+                                    tvNewsTitle.setText("ALERT: " + latest.description);
                                 }
-                            }
+                            });
                         }
-                    });
+                    } catch (Exception e) {
+                        Log.e("NEWS", "Error parsing: " + e.getMessage());
+                    }
                 }
             }
         });
     }
 
-    private void stopTracking() {
-        if (fusedLocationClient != null && locationCallback != null) {
-            fusedLocationClient.removeLocationUpdates(locationCallback);
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == 100 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            startLocationUpdates();
-        }
-    }
-
-    private void fetchHazardsFromServer() {
-        OkHttpClient client = new OkHttpClient();
-
-        // 10.0.2.2 points to your computer's localhost from the Android emulator
-        Request request = new Request.Builder()
-                .url("http://10.0.2.2/crowdtrack_api/get_hazards.php")
-                .build();
-
-        // Logic: 'enqueue' makes the network call in the background so the app doesn't freeze
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                Log.e("HAZARD_FETCH", "Network Error: " + e.getMessage());
-            }
-
-            @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                if (response.isSuccessful()) {
-                    String json = response.body().string();
-                    Gson gson = new Gson();
-
-                    // Logic: Convert the JSON text into a List using your HazardModel class
-                    final List<HazardModel> hazardList = gson.fromJson(json,
-                            new TypeToken<List<HazardModel>>(){}.getType());
-
-                    // Logic: UI changes (like adding markers) MUST happen on the UI Thread
-                    runOnUiThread(() -> {
-                        addHazardsToMap(hazardList);
-                    });
-                }
-            }
-        });
-    }
-
-    private void addHazardsToMap(List<HazardModel> list) {
-        if (mMap == null || list == null) return;
-
-        for (HazardModel hazard : list) {
-            LatLng pos = new LatLng(hazard.lat, hazard.lng);
-            float markerColor = BitmapDescriptorFactory.HUE_RED; // Default Red
-
-            // Convert description to lowercase so it's not case-sensitive
-            String desc = hazard.description.toLowerCase();
-
-            // Check for keywords
-            if (desc.contains("flood") || desc.contains("banjir") || desc.contains("air")) {
-                markerColor = BitmapDescriptorFactory.HUE_BLUE;
-            }
-            else if (desc.contains("fire") || desc.contains("api") || desc.contains("kebakaran")) {
-                markerColor = BitmapDescriptorFactory.HUE_ORANGE;
-            }
-            else if (desc.contains("accident") || desc.contains("eksiden") || desc.contains("kemalangan")) {
-                markerColor = BitmapDescriptorFactory.HUE_YELLOW;
-            }
-            else if (desc.contains("construction") || desc.contains("kerja")) {
-                markerColor = BitmapDescriptorFactory.HUE_VIOLET; // Violet for construction
-            }
-
-            mMap.addMarker(new MarkerOptions()
-                    .position(pos)
-                    .title("⚠️ " + hazard.description)
-                    .icon(BitmapDescriptorFactory.defaultMarker(markerColor)));
-        }
-    }
-
-    // Simple Helper Class (Place this at the bottom of HomeActivity.java or in a new file)
+    // Model Class
     class HazardModel {
         String description;
         double lat;

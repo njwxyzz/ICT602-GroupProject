@@ -1,39 +1,47 @@
 package com.example.ict602app;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
-import android.view.Window;
-import android.view.WindowManager;
+import android.view.View;
+import android.widget.LinearLayout;
+
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
+import androidx.cardview.widget.CardView;
 
 public class AboutActivity extends AppCompatActivity {
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_about);
 
-        try {
-            Window window = getWindow();
-            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+        // 1. SETUP NAVIGATION BAR
+        LinearLayout navHome = findViewById(R.id.navHome);
+        LinearLayout navMap = findViewById(R.id.navMap);
 
-            window.setStatusBarColor(android.graphics.Color.parseColor("#0A2342"));
-        } catch (Exception e) {
-            // Kalau phone lama tak support, abaikan je.
-        }
+        navHome.setOnClickListener(v -> {
+            Intent intent = new Intent(AboutActivity.this, HomeActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            startActivity(intent);
+        });
 
-        // Setup Action Bar (Butang Back kat atas)
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle(""); // Kosongkan tajuk sebab dah ada kat header besar
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            getSupportActionBar().setElevation(0); // Hilangkan bayang supaya bercantum dengan header
-            // Tukar warna background Action Bar jadi biru tua juga
-            getSupportActionBar().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.parseColor("#0A2342")));
-        }
-    }
+        navMap.setOnClickListener(v -> {
+            Intent intent = new Intent(AboutActivity.this, MapActivity.class);
+            startActivity(intent);
+            finish();
+        });
 
-    @Override
-    public boolean onSupportNavigateUp() {
-        finish(); // Tutup page bila tekan back
-        return true;
+        // 2. SETUP GITHUB BUTTON
+        CardView btnGithub = findViewById(R.id.btnGithub);
+
+        btnGithub.setOnClickListener(v -> {
+            // URL GitHub
+            String url = "https://github.com/njwxyzz/ICT602-GroupProject.git";
+
+            Intent i = new Intent(Intent.ACTION_VIEW);
+            i.setData(Uri.parse(url));
+            startActivity(i);
+        });
     }
 }

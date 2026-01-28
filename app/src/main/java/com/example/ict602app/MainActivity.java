@@ -1,8 +1,8 @@
-package com.example.ict602app; // Saya dah betulkan ikut package name awak
+package com.example.ict602app;
 
-import android.content.Intent; // Import needed for page navigation
+import android.content.Intent;
 import android.os.Bundle;
-import android.view.View;
+import android.util.Log; // Import untuk check log
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -25,41 +25,41 @@ public class MainActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
 
-        // Code to handle full screen (EdgeToEdge)
+        // Handle full screen insets
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
 
-        // 2. Initialize (Link with IDs in XML)
-        // Make sure IDs in activity_main.xml match these exact names!
+        // 2. Initialize Views
         etUsername = findViewById(R.id.etUsername);
         etPassword = findViewById(R.id.etPassword);
         btnSignIn = findViewById(R.id.btnSignIn);
 
-        // 3. Logic when button is clicked
-        btnSignIn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String username = etUsername.getText().toString().trim();
-                String password = etPassword.getText().toString().trim();
+        // 3. Logic Button Click
+        btnSignIn.setOnClickListener(v -> {
+            String username = etUsername.getText().toString().trim();
+            String password = etPassword.getText().toString().trim();
 
-                // Check if user left fields empty
-                if (username.isEmpty() || password.isEmpty()) {
-                    Toast.makeText(MainActivity.this, "Please enter username and password!", Toast.LENGTH_SHORT).show();
-                } else {
-                    // Success message
-                    Toast.makeText(MainActivity.this, "Welcome, " + username + "!", Toast.LENGTH_SHORT).show();
+            // Check kosong ke tak
+            if (username.isEmpty() || password.isEmpty()) {
+                Toast.makeText(MainActivity.this, "Please fill in all fields!", Toast.LENGTH_SHORT).show();
+            } else {
+                // Success!
+                Toast.makeText(MainActivity.this, "Login Successful", Toast.LENGTH_SHORT).show();
 
-                    // Navigate to HomeActivity
-                    Intent intent = new Intent(MainActivity.this, HomeActivity.class);
-                    intent.putExtra("USER_NAME", username); // Pass username to the next page
-                    startActivity(intent);
+                // Debug Log: Boleh tengok kat Logcat (bawah Android Studio) nama apa yang dihantar
+                Log.d("LOGIN_STATUS", "Sending Username: " + username);
 
-                    // Close MainActivity so user cannot go back to login
-                    finish();
-                }
+                // Navigate ke HomeActivity
+                Intent intent = new Intent(MainActivity.this, HomeActivity.class);
+
+                // --- PENTING: KUNCI INI MESTI SAMA DENGAN HOMEACTIVITY ---
+                intent.putExtra("USER_NAME", username);
+
+                startActivity(intent);
+                finish(); // Tutup page login supaya tak boleh back button
             }
         });
     }
