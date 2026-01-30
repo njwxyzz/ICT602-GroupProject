@@ -59,7 +59,7 @@ public class HomeActivity extends AppCompatActivity {
     private double currentLat = 0.0;
     private double currentLng = 0.0;
 
-    private LinearLayout navMap, navAbout;
+    private LinearLayout navMap, navNews, navAbout;
     private ImageView iconLogout;
 
     private static final String SERVER_URL = "http://10.0.2.2/crowdtrack_api/";
@@ -79,6 +79,7 @@ public class HomeActivity extends AppCompatActivity {
         recyclerHazards.setLayoutManager(new LinearLayoutManager(this));
 
         navMap = findViewById(R.id.navMap);
+        navNews = findViewById(R.id.navNews);
         navAbout = findViewById(R.id.navAbout);
         iconLogout = findViewById(R.id.iconLogout);
 
@@ -89,6 +90,7 @@ public class HomeActivity extends AppCompatActivity {
 
         // 3. NAVIGATION LOGIC
         if (navMap != null) navMap.setOnClickListener(v -> startActivity(new Intent(HomeActivity.this, MapActivity.class)));
+        if (navNews != null) navNews.setOnClickListener(v -> startActivity(new Intent(HomeActivity.this, NewsActivity.class)));
         if (navAbout != null) navAbout.setOnClickListener(v -> startActivity(new Intent(HomeActivity.this, AboutActivity.class)));
 
         if (iconLogout != null) {
