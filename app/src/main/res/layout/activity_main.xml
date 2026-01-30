@@ -59,7 +59,7 @@
                 android:layout_height="55dp"
                 android:layout_marginTop="8dp"
                 android:background="@drawable/edittext_rounded"
-                android:hint="student@university.edu"
+                android:hint="username"
                 android:inputType="textPersonName"
                 android:paddingHorizontal="16dp"
                 android:drawableStart="@android:drawable/ic_menu_send"
@@ -101,7 +101,17 @@
                 android:textStyle="bold"
                 app:cornerRadius="16dp" />
 
-
+            <TextView
+                android:id="@+id/tvRegister"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="20dp"
+                android:text="Don't have an account? Register"
+                android:textColor="#00594D"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:padding="8dp"/>
 
         </LinearLayout>
     </androidx.cardview.widget.CardView>

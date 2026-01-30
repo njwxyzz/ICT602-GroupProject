@@ -227,7 +227,6 @@
                                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Muhammad Syahiran" android:textStyle="bold" android:textColor="#263238" android:textSize="15sp"/>
                                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Database" android:background="@drawable/bg_badge_pill" android:textSize="10sp" android:textColor="#00695C" android:paddingHorizontal="8dp" android:paddingVertical="2dp" android:layout_marginStart="8dp"/>
                             </LinearLayout>
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Bin Mohd Safice @ Mohd Safiee" android:textColor="#546E7A" android:textSize="11sp"/>
                             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="2024542643 • RCDCS2515A" android:textColor="#90A4AE" android:textSize="12sp"/>
                         </LinearLayout>
                     </LinearLayout>
