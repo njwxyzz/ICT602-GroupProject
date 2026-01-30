@@ -189,7 +189,7 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="1. Open the Map and allow location access.\n2. Tap the red + button to add a hazard.\n3. Enter a short description (e.g. \"Flood near main road\").\n4. Submit – the hazard appears on the map for everyone."
+                        android:text="1. Open the Map and allow location access.\n2. Tap the red + button to add a hazard.\n3. Enter a short description (e.g. 'Flood near Jalan Cempedak').\n4. Submit – the hazard appears on the map for everyone."
                         android:textColor="#546E7A"
                         android:lineSpacingExtra="4dp"
                         android:textSize="14sp"/>
