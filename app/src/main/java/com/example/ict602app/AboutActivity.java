@@ -19,15 +19,23 @@ public class AboutActivity extends AppCompatActivity {
         // 1. SETUP NAVIGATION BAR
         LinearLayout navHome = findViewById(R.id.navHome);
         LinearLayout navMap = findViewById(R.id.navMap);
+        LinearLayout navNews = findViewById(R.id.navNews);
 
         navHome.setOnClickListener(v -> {
             Intent intent = new Intent(AboutActivity.this, HomeActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             startActivity(intent);
+            finish();
         });
 
         navMap.setOnClickListener(v -> {
             Intent intent = new Intent(AboutActivity.this, MapActivity.class);
+            startActivity(intent);
+            finish();
+        });
+
+        navNews.setOnClickListener(v -> {
+            Intent intent = new Intent(AboutActivity.this, NewsActivity.class);
             startActivity(intent);
             finish();
         });
