@@ -106,10 +106,17 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
         // 2. SETUP NAVIGATION BAR
         LinearLayout navHome = findViewById(R.id.navHome);
+        LinearLayout navNews = findViewById(R.id.navNews);
         LinearLayout navAbout = findViewById(R.id.navAbout);
 
         navHome.setOnClickListener(v -> {
             startActivity(new Intent(MapActivity.this, HomeActivity.class));
+            overridePendingTransition(0, 0);
+            finish();
+        });
+
+        navNews.setOnClickListener(v -> {
+            startActivity(new Intent(MapActivity.this, NewsActivity.class));
             overridePendingTransition(0, 0);
             finish();
         });
