@@ -25,6 +25,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import org.json.JSONException;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -94,24 +95,29 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
+                // Dalam onResponse:
                 if (response.isSuccessful()) {
+                    String jsonResponse = response.body().string(); // Dapat {"status":"success", ...}
+
                     try {
-                        String json = response.body().string();
-                        JSONObject jsonObject = new JSONObject(json);
+                        JSONObject jsonObject = new JSONObject(jsonResponse);
                         String status = jsonObject.getString("status");
 
-                        runOnUiThread(() -> {
-                            if (status.equals("success")) {
-                                Toast.makeText(MainActivity.this, "Login Successful", Toast.LENGTH_SHORT).show();
-                                Intent intent = new Intent(MainActivity.this, HomeActivity.class);
-                                intent.putExtra("USER_NAME", username);
-                                startActivity(intent);
-                                finish();
-                            } else {
-                                Toast.makeText(MainActivity.this, "Invalid Username or Password", Toast.LENGTH_SHORT).show();
-                            }
-                        });
-                    } catch (Exception e) {
+                        if (status.equals("success")) {
+                            // Login Berjaya
+                            String username = jsonObject.getString("username");
+
+                            // Simpan session atau terus masuk Home
+                            Intent intent = new Intent(MainActivity.this, HomeActivity.class);
+                            intent.putExtra("USER_NAME", username);
+                            startActivity(intent);
+                            finish();
+                        } else {
+                            // Login Gagal (tunjuk message dari PHP)
+                            String msg = jsonObject.getString("message");
+                            runOnUiThread(() -> Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show());
+                        }
+                    } catch (JSONException e) {
                         e.printStackTrace();
                     }
                 }

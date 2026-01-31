@@ -41,7 +41,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Username / Email"
+                android:text="Username"
                 android:textColor="#333333"
                 android:textSize="13sp"
                 android:textStyle="bold" />
@@ -52,12 +52,38 @@
                 android:layout_height="55dp"
                 android:layout_marginTop="8dp"
                 android:background="@drawable/edittext_rounded"
-                android:drawableStart="@android:drawable/ic_menu_my_calendar"
+                android:drawableStart="@android:drawable/ic_menu_myplaces"
                 android:drawablePadding="12dp"
-                android:hint="Choose a username"
+                android:hint="Choose a username (e.g. Najwa)"
                 android:inputType="textPersonName"
                 android:paddingHorizontal="16dp"
-                android:textSize="14sp" />
+                android:textSize="14sp"
+                android:textColor="#333333"
+                android:textColorHint="#90A4AE"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="Email Address"
+                android:textColor="#333333"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <EditText
+                android:id="@+id/etRegEmail"
+                android:layout_width="match_parent"
+                android:layout_height="55dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/edittext_rounded"
+                android:drawableStart="@android:drawable/ic_dialog_email"
+                android:drawablePadding="12dp"
+                android:hint="name@email.com"
+                android:inputType="textEmailAddress"
+                android:paddingHorizontal="16dp"
+                android:textSize="14sp"
+                android:textColor="#333333"
+                android:textColorHint="#90A4AE"/>
 
             <TextView
                 android:layout_width="wrap_content"
@@ -79,7 +105,9 @@
                 android:hint="••••••••"
                 android:inputType="textPassword"
                 android:paddingHorizontal="16dp"
-                android:textSize="14sp" />
+                android:textSize="14sp"
+                android:textColor="#333333"
+                android:textColorHint="#90A4AE"/>
 
             <TextView
                 android:layout_width="wrap_content"
@@ -101,7 +129,9 @@
                 android:hint="Re-enter password"
                 android:inputType="textPassword"
                 android:paddingHorizontal="16dp"
-                android:textSize="14sp" />
+                android:textSize="14sp"
+                android:textColor="#333333"
+                android:textColorHint="#90A4AE"/>
 
             <Button
                 android:id="@+id/btnRegister"

@@ -23,13 +23,22 @@ import androidx.cardview.widget.CardView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+// GRAPHICS FOR CUSTOM MARKERS (PENTING)
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
+import android.view.LayoutInflater;
+import android.view.View;
+
 // GOOGLE MAPS
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 // GPS
@@ -45,12 +54,12 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import android.location.Address;
 import android.location.Geocoder;
 import java.util.Locale;
+import java.util.List;
 
 // NETWORK
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
-import java.util.List;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.OkHttpClient;
@@ -64,17 +73,18 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     private GoogleMap mMap;
     private FusedLocationProviderClient fusedLocationClient;
     private LocationCallback locationCallback;
+    private Marker userMarker; // CUSTOM MARKER "YOU ARE HERE"
+
     private TextView tvMapCoords, tvHazardCount;
     private EditText etSearch;
 
-    // --- FIX: THESE VARIABLES WERE MISSING ---
+    // POPUP UI (CardView Hazard Info)
     private CardView cardHazardDetails;
     private TextView tvHazardTitle, tvHazardDesc, tvHazardCoords;
     private ImageView imgHazardIcon;
     private ImageButton btnClosePopup;
-    // ----------------------------------------
 
-    // UPDATE YOUR IP HERE IF NEEDED
+    // IP Address (Guna 10.0.2.2 untuk Emulator)
     private static final String SERVER_URL = "http://10.0.2.2/crowdtrack_api/";
 
     @Override
@@ -93,7 +103,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         FloatingActionButton fabZoomIn = findViewById(R.id.fabZoomIn);
         FloatingActionButton fabZoomOut = findViewById(R.id.fabZoomOut);
 
-        // --- POPUP UI INITIALIZATION ---
+        // POPUP INITIALIZATION
         cardHazardDetails = findViewById(R.id.cardHazardDetails);
         tvHazardTitle = findViewById(R.id.tvHazardTitle);
         tvHazardDesc = findViewById(R.id.tvHazardDesc);
@@ -101,72 +111,55 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         imgHazardIcon = findViewById(R.id.imgHazardIcon);
         btnClosePopup = findViewById(R.id.btnClosePopup);
 
-        // Hide popup when Close button is clicked
-        btnClosePopup.setOnClickListener(v -> cardHazardDetails.setVisibility(android.view.View.GONE));
+        btnClosePopup.setOnClickListener(v -> cardHazardDetails.setVisibility(View.GONE));
 
-        // 2. SETUP NAVIGATION BAR
-        LinearLayout navHome = findViewById(R.id.navHome);
-        LinearLayout navNews = findViewById(R.id.navNews);
-        LinearLayout navAbout = findViewById(R.id.navAbout);
-
-        navHome.setOnClickListener(v -> {
+        // 2. NAVIGATION BAR
+        findViewById(R.id.navHome).setOnClickListener(v -> {
             startActivity(new Intent(MapActivity.this, HomeActivity.class));
             overridePendingTransition(0, 0);
             finish();
         });
 
-        navNews.setOnClickListener(v -> {
+        // --- TAMBAH INI (Supaya News berfungsi) ---
+        findViewById(R.id.navNews).setOnClickListener(v -> {
             startActivity(new Intent(MapActivity.this, NewsActivity.class));
             overridePendingTransition(0, 0);
             finish();
         });
-
-        navAbout.setOnClickListener(v -> {
+        // ------------------------------------------
+        findViewById(R.id.navAbout).setOnClickListener(v -> {
             startActivity(new Intent(MapActivity.this, AboutActivity.class));
             overridePendingTransition(0, 0);
             finish();
         });
 
-        // 3. ACTIVATE SEARCH
+        // (Optional) Kalau nak letak Nav News juga
+        // findViewById(R.id.navNews).setOnClickListener(v -> { ... });
+
+        // 3. SEARCH ACTION
         etSearch.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_SEARCH || actionId == EditorInfo.IME_ACTION_DONE) {
-                String locationName = etSearch.getText().toString();
-                searchLocation(locationName);
+                searchLocation(etSearch.getText().toString());
                 return true;
             }
             return false;
         });
 
-        // 4. SETUP BUTTON ACTIONS
-        fabZoomIn.setOnClickListener(v -> {
-            if (mMap != null) mMap.animateCamera(CameraUpdateFactory.zoomIn());
-        });
-
-        fabZoomOut.setOnClickListener(v -> {
-            if (mMap != null) mMap.animateCamera(CameraUpdateFactory.zoomOut());
-        });
-
+        // 4. BUTTON ACTIONS
+        fabZoomIn.setOnClickListener(v -> { if (mMap != null) mMap.animateCamera(CameraUpdateFactory.zoomIn()); });
+        fabZoomOut.setOnClickListener(v -> { if (mMap != null) mMap.animateCamera(CameraUpdateFactory.zoomOut()); });
         fabMyLocation.setOnClickListener(v -> checkPermissionAndGetLastLocation());
-        fabAddHazard.setOnClickListener(v -> showReportDialog());
+        fabAddHazard.setOnClickListener(v -> showReportDialog()); // Panggil Dialog Report
         fabLayers.setOnClickListener(v -> {
             if (mMap != null) {
-                if (mMap.getMapType() == GoogleMap.MAP_TYPE_NORMAL) {
-                    mMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
-                    Toast.makeText(this, "Satellite Mode", Toast.LENGTH_SHORT).show();
-                } else {
-                    mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
-                    Toast.makeText(this, "Normal Mode", Toast.LENGTH_SHORT).show();
-                }
+                mMap.setMapType(mMap.getMapType() == GoogleMap.MAP_TYPE_NORMAL ? GoogleMap.MAP_TYPE_HYBRID : GoogleMap.MAP_TYPE_NORMAL);
             }
         });
 
-        // 5. LOAD GOOGLE MAP
+        // 5. MAP & GPS INIT
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
-        if (mapFragment != null) {
-            mapFragment.getMapAsync(this);
-        }
+        if (mapFragment != null) mapFragment.getMapAsync(this);
 
-        // 6. INIT GPS CLIENT
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
     }
 
@@ -175,31 +168,68 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         mMap = googleMap;
         mMap.getUiSettings().setZoomControlsEnabled(false);
         mMap.getUiSettings().setCompassEnabled(true);
-        mMap.getUiSettings().setMyLocationButtonEnabled(false);
+        mMap.getUiSettings().setMyLocationButtonEnabled(false); // Disable default blue dot (sebab kita guna marker custom)
 
-        // --- MARKER CLICK LISTENER ---
+        // Marker Click (Buka Popup)
         mMap.setOnMarkerClickListener(marker -> {
-            // Check if the marker has Hazard data attached
             Object tag = marker.getTag();
             if (tag instanceof HazardPoint) {
-                HazardPoint hazard = (HazardPoint) tag;
-                showHazardPopup(hazard); // Show our custom card
-                return true; // Return true to disable default Google Maps bubble
+                showHazardPopup((HazardPoint) tag);
+                return true;
             }
             return false;
         });
 
-        // Hide popup if user clicks anywhere else on the map
-        mMap.setOnMapClickListener(latLng -> cardHazardDetails.setVisibility(android.view.View.GONE));
+        // Map Click (Tutup Popup)
+        mMap.setOnMapClickListener(latLng -> cardHazardDetails.setVisibility(View.GONE));
 
-        LatLng defaultLoc = new LatLng(4.2105, 101.9758);
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(defaultLoc, 6f));
+        // Default Camera: Malaysia
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(4.2105, 101.9758), 6f));
 
         fetchLocationsFromServer();
         fetchHazardsFromServer();
         checkPermissionAndStartGPS();
     }
 
+    // --- FETCH HAZARDS (GUNA ICON CANTIK) ---
+    private void fetchHazardsFromServer() {
+        OkHttpClient client = new OkHttpClient();
+        Request request = new Request.Builder().url(SERVER_URL + "get_hazards.php").build();
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {}
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                if (response.isSuccessful()) {
+                    String json = response.body().string();
+                    List<HazardPoint> hazards = new Gson().fromJson(json, new TypeToken<List<HazardPoint>>(){}.getType());
+                    runOnUiThread(() -> {
+                        if (hazards != null) {
+                            tvHazardCount.setText(hazards.size() + " Hazards");
+                            if (mMap != null) {
+                                for (HazardPoint hazard : hazards) {
+                                    if (hazard.lat != null && hazard.lng != null) {
+
+                                        // GUNA CUSTOM ICON HELPER
+                                        BitmapDescriptor icon = getHazardIcon(hazard.description);
+
+                                        Marker m = mMap.addMarker(new MarkerOptions()
+                                                .position(new LatLng(hazard.lat, hazard.lng))
+                                                .title(hazard.description)
+                                                .icon(icon)); // Icon cantik
+
+                                        if (m != null) m.setTag(hazard);
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    // --- SEARCH LOGIC ---
     private void searchLocation(String locationName) {
         if (locationName == null || locationName.isEmpty()) return;
         Geocoder geocoder = new Geocoder(this, Locale.getDefault());
@@ -209,26 +239,23 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                 Address address = addressList.get(0);
                 LatLng latLng = new LatLng(address.getLatitude(), address.getLongitude());
                 mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15));
-                mMap.addMarker(new MarkerOptions()
-                        .position(latLng)
-                        .title(locationName)
-                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
+                mMap.addMarker(new MarkerOptions().position(latLng).title(locationName));
                 Toast.makeText(this, "Found: " + address.getAddressLine(0), Toast.LENGTH_SHORT).show();
             } else {
                 Toast.makeText(this, "Location not found", Toast.LENGTH_SHORT).show();
             }
         } catch (IOException e) {
             e.printStackTrace();
-            Toast.makeText(this, "Network error", Toast.LENGTH_SHORT).show();
         }
     }
 
+    // --- FETCH LOCATIONS (BLUE DOTS FOR OTHERS) ---
     private void fetchLocationsFromServer() {
         OkHttpClient client = new OkHttpClient();
         Request request = new Request.Builder().url(SERVER_URL + "get_locations.php").build();
         client.newCall(request).enqueue(new Callback() {
             @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) { Log.e("MAP", "Error: " + e.getMessage()); }
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {}
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 if (response.isSuccessful()) {
@@ -253,46 +280,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         });
     }
 
-    private void fetchHazardsFromServer() {
-        OkHttpClient client = new OkHttpClient();
-        Request request = new Request.Builder().url(SERVER_URL + "get_hazards.php").build();
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {}
-            @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                if (response.isSuccessful()) {
-                    String json = response.body().string();
-                    List<HazardPoint> hazards = new Gson().fromJson(json, new TypeToken<List<HazardPoint>>(){}.getType());
-                    runOnUiThread(() -> {
-                        if (hazards != null) {
-                            tvHazardCount.setText(hazards.size() + " Hazards");
-                            if (mMap != null) {
-                                for (HazardPoint hazard : hazards) {
-                                    if (hazard.lat != null && hazard.lng != null) {
-                                        float color = BitmapDescriptorFactory.HUE_RED;
-                                        String desc = hazard.description.toLowerCase();
-                                        if (desc.contains("flood")) color = BitmapDescriptorFactory.HUE_BLUE;
-                                        else if (desc.contains("fire")) color = BitmapDescriptorFactory.HUE_ORANGE;
-                                        else if (desc.contains("accident")) color = BitmapDescriptorFactory.HUE_YELLOW;
-
-                                        com.google.android.gms.maps.model.Marker m = mMap.addMarker(new MarkerOptions()
-                                                .position(new LatLng(hazard.lat, hazard.lng))
-                                                .title(hazard.description)
-                                                .icon(BitmapDescriptorFactory.defaultMarker(color)));
-
-                                        // ATTACH DATA
-                                        if (m != null) m.setTag(hazard);
-                                    }
-                                }
-                            }
-                        }
-                    });
-                }
-            }
-        });
-    }
-
+    // --- SHOW HAZARD POPUP (CARDVIEW) ---
     private void showHazardPopup(HazardPoint hazard) {
         tvHazardDesc.setText(hazard.description);
         tvHazardCoords.setText(String.format("GPS: %.5f, %.5f", hazard.lat, hazard.lng));
@@ -300,32 +288,23 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         String lowerDesc = hazard.description.toLowerCase();
         if (lowerDesc.contains("flood")) {
             tvHazardTitle.setText("Flood Alert");
-            tvHazardTitle.setTextColor(android.graphics.Color.BLUE);
             imgHazardIcon.setImageResource(android.R.drawable.ic_menu_compass);
-            imgHazardIcon.setColorFilter(android.graphics.Color.BLUE);
         } else if (lowerDesc.contains("fire")) {
             tvHazardTitle.setText("Fire Hazard");
-            tvHazardTitle.setTextColor(android.graphics.Color.RED);
             imgHazardIcon.setImageResource(android.R.drawable.ic_menu_call);
-            imgHazardIcon.setColorFilter(android.graphics.Color.RED);
         } else {
             tvHazardTitle.setText("Caution");
-            tvHazardTitle.setTextColor(android.graphics.Color.DKGRAY);
             imgHazardIcon.setImageResource(android.R.drawable.ic_dialog_alert);
-            imgHazardIcon.setColorFilter(android.graphics.Color.DKGRAY);
         }
-
-        cardHazardDetails.setVisibility(android.view.View.VISIBLE);
-        cardHazardDetails.setAlpha(0f);
-        cardHazardDetails.animate().alpha(1f).setDuration(300).start();
+        cardHazardDetails.setVisibility(View.VISIBLE);
     }
 
-    // --- GPS LOGIC ---
+    // --- GPS LOGIC & CUSTOM "YOU ARE HERE" LABEL ---
     private void checkPermissionAndStartGPS() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 100);
         } else {
-            mMap.setMyLocationEnabled(true);
+            mMap.setMyLocationEnabled(false); // Tutup blue dot standard
             startLocationUpdates();
         }
     }
@@ -335,14 +314,8 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             fusedLocationClient.getLastLocation().addOnSuccessListener(location -> {
                 if (location != null) {
                     mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location.getLatitude(), location.getLongitude()), 15f));
-                    String coordText = String.format("%.4f | %.4f", location.getLatitude(), location.getLongitude());
-                    tvMapCoords.setText(coordText);
-                } else {
-                    Toast.makeText(this, "Searching for GPS signal...", Toast.LENGTH_SHORT).show();
                 }
             });
-        } else {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 100);
         }
     }
 
@@ -355,6 +328,15 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                 for (Location location : locationResult.getLocations()) {
                     String coordText = String.format("%.4f | %.4f", location.getLatitude(), location.getLongitude());
                     tvMapCoords.setText(coordText);
+
+                    // LUKIS CUSTOM MARKER "YOU ARE HERE"
+                    LatLng userPos = new LatLng(location.getLatitude(), location.getLongitude());
+                    if (userMarker != null) userMarker.remove();
+
+                    userMarker = mMap.addMarker(new MarkerOptions()
+                            .position(userPos)
+                            .icon(createCustomMarker(MapActivity.this))
+                            .anchor(0.5f, 1.0f));
                 }
             }
         };
@@ -366,18 +348,14 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == 100) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                checkPermissionAndStartGPS();
-            } else {
-                Toast.makeText(this, "Permission denied.", Toast.LENGTH_SHORT).show();
-            }
+        if (requestCode == 100 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            checkPermissionAndStartGPS();
         }
     }
 
-    // --- HAZARD REPORTING DIALOG ---
+    // --- REPORT DIALOG (FULL FUNCTIONALITY) ---
     private void showReportDialog() {
-        android.view.View dialogView = getLayoutInflater().inflate(R.layout.dialog_report_hazard, null);
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_report_hazard, null);
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setView(dialogView);
         final AlertDialog dialog = builder.create();
@@ -392,10 +370,12 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         android.widget.Button btnSubmit = dialogView.findViewById(R.id.btnSubmit);
         android.widget.Button btnCancel = dialogView.findViewById(R.id.btnCancel);
 
+        // Spinner Data
         String[] hazardTypes = {"Flood", "Fire", "Accident", "Construction", "Other"};
         android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, hazardTypes);
         spinnerType.setAdapter(adapter);
 
+        // Get Location Button
         btnGetLocation.setOnClickListener(v -> {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                 Toast.makeText(this, "Fetching location...", Toast.LENGTH_SHORT).show();
@@ -412,6 +392,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             }
         });
 
+        // Submit Button
         btnSubmit.setOnClickListener(v -> {
             String latStr = etLat.getText().toString();
             String lngStr = etLng.getText().toString();
@@ -422,10 +403,12 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                 Toast.makeText(this, "Enter coords or click 'My GPS'", Toast.LENGTH_SHORT).show();
                 return;
             }
+
             try {
                 double finalLat = Double.parseDouble(latStr);
                 double finalLng = Double.parseDouble(lngStr);
                 String finalDesc = type + ": " + details;
+
                 sendHazardToServer(finalLat, finalLng, finalDesc);
                 dialog.dismiss();
             } catch (NumberFormatException e) {
@@ -437,39 +420,76 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         dialog.show();
     }
 
+    // --- SEND DATA TO SERVER (PHP) ---
     private void sendHazardToServer(double lat, double lng, String desc) {
         OkHttpClient client = new OkHttpClient();
-        RequestBody formBody = new FormBody.Builder().add("latitude", String.valueOf(lat)).add("longitude", String.valueOf(lng)).add("description", desc).build();
-        Request request = new Request.Builder().url(SERVER_URL + "add_hazard.php").post(formBody).build();
+        RequestBody formBody = new FormBody.Builder()
+                .add("latitude", String.valueOf(lat))
+                .add("longitude", String.valueOf(lng))
+                .add("description", desc)
+                .build();
+
+        Request request = new Request.Builder()
+                .url(SERVER_URL + "add_hazard.php")
+                .post(formBody)
+                .build();
+
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 runOnUiThread(() -> Toast.makeText(MapActivity.this, "Network Error", Toast.LENGTH_SHORT).show());
             }
+
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 runOnUiThread(() -> {
                     if (response.isSuccessful()) {
-                        Toast.makeText(MapActivity.this, "Reported!", Toast.LENGTH_LONG).show();
-                        fetchHazardsFromServer();
+                        Toast.makeText(MapActivity.this, "Reported Successfully!", Toast.LENGTH_LONG).show();
+                        fetchHazardsFromServer(); // Refresh Map terus
                     }
                 });
             }
         });
     }
 
-    // Helper Classes
+    // --- HELPER METHODS: GRAPHICS & ICONS (JANGAN PADAM) ---
+
+    private BitmapDescriptor getHazardIcon(String description) {
+        String descLower = description.toLowerCase();
+        int drawableId;
+        if (descLower.contains("accident")) drawableId = R.drawable.ic_marker_accident;
+        else if (descLower.contains("flood")) drawableId = R.drawable.ic_marker_flood;
+        else if (descLower.contains("fire")) drawableId = R.drawable.ic_marker_fire;
+        else drawableId = R.drawable.ic_marker_default;
+        return bitmapDescriptorFromVector(this, drawableId);
+    }
+
+    private BitmapDescriptor bitmapDescriptorFromVector(android.content.Context context, int vectorResId) {
+        Drawable vectorDrawable = ContextCompat.getDrawable(context, vectorResId);
+        if (vectorDrawable == null) return BitmapDescriptorFactory.defaultMarker();
+        vectorDrawable.setBounds(0, 0, vectorDrawable.getIntrinsicWidth(), vectorDrawable.getIntrinsicHeight());
+        Bitmap bitmap = Bitmap.createBitmap(vectorDrawable.getIntrinsicWidth(), vectorDrawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        vectorDrawable.draw(canvas);
+        return BitmapDescriptorFactory.fromBitmap(bitmap);
+    }
+
+    private BitmapDescriptor createCustomMarker(android.content.Context context) {
+        View markerView = LayoutInflater.from(context).inflate(R.layout.marker_user_label, null);
+        markerView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        markerView.layout(0, 0, markerView.getMeasuredWidth(), markerView.getMeasuredHeight());
+        Bitmap bitmap = Bitmap.createBitmap(markerView.getMeasuredWidth(), markerView.getMeasuredHeight(), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        markerView.draw(canvas);
+        return BitmapDescriptorFactory.fromBitmap(bitmap);
+    }
+
+    // --- MODELS ---
     public class LocationLog {
-        private String username;
-        private String latitude;
-        private String longitude;
+        private String username; private String latitude; private String longitude;
         public String getUsername() { return username; }
         public String getLatitude() { return latitude; }
         public String getLongitude() { return longitude; }
     }
-    public class HazardPoint {
-        public Double lat;
-        public Double lng;
-        public String description;
-    }
+    public class HazardPoint { public Double lat; public Double lng; public String description; }
 }

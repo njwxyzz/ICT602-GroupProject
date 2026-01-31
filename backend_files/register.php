@@ -2,6 +2,7 @@
 include 'db_connect.php'; // Ensure you have your database connection file
 
 $username = $_POST['username'];
+$email = $_POST['email'];
 $password = $_POST['password'];
 
 if (!$username || !$password) {
@@ -19,7 +20,8 @@ if ($check->num_rows > 0) {
 // Hash the password for security
 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-$sql = "INSERT INTO users (username, password) VALUES ('$username', '$hashed_password')";
+// Tambah column email
+$sql = "INSERT INTO users (username, email, password) VALUES ('$username', '$email', '$password')";
 
 if ($conn->query($sql) === TRUE) {
     echo json_encode(["status" => "success", "message" => "User registered successfully"]);

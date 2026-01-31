@@ -22,11 +22,12 @@ import okhttp3.Response;
 
 public class RegisterActivity extends AppCompatActivity {
 
-    private EditText etRegUsername, etRegPassword, etConfirmPassword;
+    // 1. Declare variables (Termasuk Email)
+    private EditText etRegUsername, etRegEmail, etRegPassword, etConfirmPassword;
     private Button btnRegister;
     private TextView tvLoginLink;
 
-    // UPDATE IP IF NEEDED
+    // UPDATE IP JIKA PERLU
     private static final String SERVER_URL = "http://10.0.2.2/crowdtrack_api/";
 
     @Override
@@ -34,21 +35,23 @@ public class RegisterActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
 
-        // 1. Initialize Views
+        // 2. Initialize Views (Link dengan ID dalam XML)
         etRegUsername = findViewById(R.id.etRegUsername);
+        etRegEmail = findViewById(R.id.etRegEmail);       // <-- Tambah ini
         etRegPassword = findViewById(R.id.etRegPassword);
-        etConfirmPassword = findViewById(R.id.etConfirmPassword); // New Field
+        etConfirmPassword = findViewById(R.id.etConfirmPassword);
         btnRegister = findViewById(R.id.btnRegister);
         tvLoginLink = findViewById(R.id.tvLoginLink);
 
-        // 2. Register Button Logic
+        // 3. Register Button Logic
         btnRegister.setOnClickListener(v -> {
             String user = etRegUsername.getText().toString().trim();
+            String email = etRegEmail.getText().toString().trim(); // <-- Ambil text Email
             String pass = etRegPassword.getText().toString().trim();
             String confirmPass = etConfirmPassword.getText().toString().trim();
 
-            // A. Check Empty Fields
-            if (user.isEmpty() || pass.isEmpty() || confirmPass.isEmpty()) {
+            // A. Check Empty Fields (Termasuk Email)
+            if (user.isEmpty() || email.isEmpty() || pass.isEmpty() || confirmPass.isEmpty()) {
                 Toast.makeText(this, "Please fill in all fields", Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -60,18 +63,22 @@ public class RegisterActivity extends AppCompatActivity {
                 return;
             }
 
-            // C. Proceed to Register
-            registerUser(user, pass);
+            // C. Proceed to Register (Hantar 3 benda: User, Email, Password)
+            registerUser(user, email, pass);
         });
 
-        // 3. Back to Login
+        // 4. Back to Login
         tvLoginLink.setOnClickListener(v -> finish());
     }
 
-    private void registerUser(String user, String pass) {
+    // Function updated untuk terima Email
+    private void registerUser(String user, String email, String pass) {
         OkHttpClient client = new OkHttpClient();
+
+        // Hantar data ke PHP
         RequestBody formBody = new FormBody.Builder()
                 .add("username", user)
+                .add("email", email)
                 .add("password", pass)
                 .build();
 
@@ -83,31 +90,31 @@ public class RegisterActivity extends AppCompatActivity {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
-                // This happens if the server is unreachable (e.g., wrong IP)
                 runOnUiThread(() -> Toast.makeText(RegisterActivity.this, "Network Error: Check IP or Server", Toast.LENGTH_LONG).show());
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
                 if (response.isSuccessful()) {
-                    // Success! 200 OK
                     try {
                         String json = response.body().string();
                         JSONObject jsonObject = new JSONObject(json);
-                        String message = jsonObject.getString("message");
-                        String status = jsonObject.getString("status");
+
+                        // PHP perlu return "status" dan "message"
+                        String message = jsonObject.optString("message", "Registration Status Unknown");
+                        String status = jsonObject.optString("status", "error");
 
                         runOnUiThread(() -> {
                             Toast.makeText(RegisterActivity.this, message, Toast.LENGTH_SHORT).show();
                             if (status.equals("success")) {
-                                finish();
+                                finish(); // Tutup page register, balik ke login
                             }
                         });
                     } catch (Exception e) {
                         e.printStackTrace();
+                        runOnUiThread(() -> Toast.makeText(RegisterActivity.this, "JSON Error", Toast.LENGTH_SHORT).show());
                     }
                 } else {
-                    // NEW: Handle Server Errors (404, 500, etc.)
                     runOnUiThread(() -> Toast.makeText(RegisterActivity.this, "Server Error: " + response.code(), Toast.LENGTH_LONG).show());
                 }
             }

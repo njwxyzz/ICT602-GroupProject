@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 30, 2026 at 05:21 AM
+-- Generation Time: Jan 31, 2026 at 10:16 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -44,7 +44,20 @@ INSERT INTO `hazards` (`id`, `lat`, `lng`, `description`) VALUES
 (3, 3.15, 101.7, 'Fire reported near Main Hall'),
 (4, 3.138, 101.69, 'Car Accident at Junction'),
 (5, 3.142, 101.698, 'Heavy Rain and Flash Flood'),
-(6, 3.148, 101.692, 'Building Fire - Stay Away');
+(6, 3.148, 101.692, 'Building Fire - Stay Away'),
+(8, 6.4485, 100.2776, 'Flash Flood: UiTM Main Gate Entrance'),
+(9, 6.4297, 100.2698, 'Accident: Near Arau KTM Station'),
+(10, 6.44, 100.198, 'Fire: Bush fire along Kangar Highway'),
+(11, 6.452, 100.285, 'Construction: Road closure near Matrikulasi'),
+(12, 6.435, 100.25, 'Obstruction: Car breakdown blocking left lane'),
+(13, 6.46, 100.21, 'Heavy Rain: Visibility low at Pauh Putra'),
+(14, 3.0697, 101.5037, 'Flash Flood: UiTM Shah Alam Seksyen 7'),
+(15, 3.1579, 101.7116, 'Traffic Jam: Massive Gridlock near KLCC'),
+(16, 5.3546, 100.4079, 'Accident: Car breakdown on Penang Bridge (Mid Span)'),
+(17, 2.223, 102.214, 'Fire: Shoplot fire near Dataran Pahlawan Melaka'),
+(18, 6.1254, 102.2381, 'Heavy Rain: Thunderstorm warning in Kota Bharu'),
+(19, 1.4927, 110.36, 'Construction: Roadworks near UiTM Sarawak (Samarahan)'),
+(20, 5.9788, 116.0753, 'Landslide: Hill slope warning near Kota Kinabalu');
 
 --
 -- Indexes for dumped tables
@@ -64,7 +77,7 @@ ALTER TABLE `hazards`
 -- AUTO_INCREMENT for table `hazards`
 --
 ALTER TABLE `hazards`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

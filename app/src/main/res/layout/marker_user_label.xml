@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="center_horizontal">
+
+    <TextView
+        android:id="@+id/tvLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="You are here"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:textColor="#00594D"
+        android:background="@drawable/bg_badge_pill"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="6dp"
+        android:elevation="4dp"/>
+
+    <ImageView
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:src="@drawable/bg_circle_avatar"
+        android:backgroundTint="#2979FF"
+        android:layout_marginTop="4dp"/>
+
+</LinearLayout>
